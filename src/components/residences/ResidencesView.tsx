@@ -137,6 +137,90 @@ export const ResidencesView: React.FC<ResidencesProps> = ({
         </button>
       </div>
 
+      {/* Institutional Residence Profile & Campus Breakdown (RFP §3 & §4) */}
+      <div className="notion-card" style={{ padding: '20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+          <div>
+            <h2 style={{ fontSize: '15px', fontWeight: 600, color: '#242424', margin: 0 }}>
+              Institutional Residence Profile &amp; Campus Scope (RFP §3)
+            </h2>
+            <p style={{ fontSize: '12px', color: '#6B6B66', margin: '2px 0 0' }}>
+              Statutory institutional distribution across Durban and Midlands campuses accommodating 175 residences and 25,774 beds.
+            </p>
+          </div>
+          <span style={{ fontSize: '11px', background: '#F3EFFB', color: '#7656C9', padding: '3px 8px', borderRadius: '4px', fontWeight: 600 }}>
+            175 Residences • 25,774 Beds Total
+          </span>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+          {/* Durban Breakdown */}
+          <div style={{ background: '#F8F9FA', borderRadius: '6px', padding: '14px', border: '1px solid #E5E7EB' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <span style={{ fontSize: '13px', fontWeight: 600, color: '#1E3A8A' }}>🏛 Durban Campus</span>
+              <span style={{ fontSize: '12px', fontWeight: 600, color: '#1E3A8A' }}>99 Residences • 20,210 Capacity</span>
+            </div>
+            <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
+              <tbody>
+                <tr style={{ borderBottom: '1px solid #E5E7EB' }}>
+                  <td style={{ padding: '6px 0', color: '#4B5563' }}>Outsourced Residences</td>
+                  <td style={{ padding: '6px 0', textAlign: 'center', color: '#111827', fontWeight: 500 }}>90 residences</td>
+                  <td style={{ padding: '6px 0', textAlign: 'right', color: '#111827', fontWeight: 600 }}>18,471 beds</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid #E5E7EB' }}>
+                  <td style={{ padding: '6px 0', color: '#4B5563' }}>Insourced Residences</td>
+                  <td style={{ padding: '6px 0', textAlign: 'center', color: '#111827', fontWeight: 500 }}>9 residences</td>
+                  <td style={{ padding: '6px 0', textAlign: 'right', color: '#111827', fontWeight: 600 }}>1,739 beds</td>
+                </tr>
+                <tr style={{ fontWeight: 600 }}>
+                  <td style={{ padding: '6px 0', color: '#1F2937' }}>Durban Total</td>
+                  <td style={{ padding: '6px 0', textAlign: 'center', color: '#1F2937' }}>99 residences</td>
+                  <td style={{ padding: '6px 0', textAlign: 'right', color: '#1F2937' }}>20,210 beds</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* Midlands Breakdown */}
+          <div style={{ background: '#F8F9FA', borderRadius: '6px', padding: '14px', border: '1px solid #E5E7EB' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <span style={{ fontSize: '13px', fontWeight: 600, color: '#14532D' }}>🌲 Midlands Campus</span>
+              <span style={{ fontSize: '12px', fontWeight: 600, color: '#14532D' }}>76 Residences • 5,564 Capacity</span>
+            </div>
+            <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
+              <tbody>
+                <tr style={{ borderBottom: '1px solid #E5E7EB' }}>
+                  <td style={{ padding: '6px 0', color: '#4B5563' }}>Outsourced Residences</td>
+                  <td style={{ padding: '6px 0', textAlign: 'center', color: '#111827', fontWeight: 500 }}>70 residences</td>
+                  <td style={{ padding: '6px 0', textAlign: 'right', color: '#111827', fontWeight: 600 }}>4,762 beds</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid #E5E7EB' }}>
+                  <td style={{ padding: '6px 0', color: '#4B5563' }}>Insourced Residences</td>
+                  <td style={{ padding: '6px 0', textAlign: 'center', color: '#111827', fontWeight: 500 }}>5 residences</td>
+                  <td style={{ padding: '6px 0', textAlign: 'right', color: '#111827', fontWeight: 600 }}>802 beds</td>
+                </tr>
+                <tr style={{ fontWeight: 600 }}>
+                  <td style={{ padding: '6px 0', color: '#1F2937' }}>Midlands Total</td>
+                  <td style={{ padding: '6px 0', textAlign: 'center', color: '#1F2937' }}>76 residences</td>
+                  <td style={{ padding: '6px 0', textAlign: 'right', color: '#1F2937' }}>5,564 beds</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Portfolio Rule Accordion / Tag (RFP §4) */}
+        <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid #E5E7EB', display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', fontSize: '12px' }}>
+          <span style={{ fontWeight: 600, color: '#374151' }}>HC Portfolio Rules (RFP §4):</span>
+          <span style={{ background: '#EFF6FF', color: '#1D4ED8', padding: '3px 8px', borderRadius: '4px', fontWeight: 500 }}>
+            &gt; 100 Capacity: 3 Portfolios (Chairperson, Project Officer, Secretary)
+          </span>
+          <span style={{ background: '#F0FDF4', color: '#15803D', padding: '3px 8px', borderRadius: '4px', fontWeight: 500 }}>
+            &lt; 100 Capacity: 2 Portfolios (House Representative 1, House Representative 2)
+          </span>
+        </div>
+      </div>
+
       {/* Isolation Notice */}
       <div
         style={{
