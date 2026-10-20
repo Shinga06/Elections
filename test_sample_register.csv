@@ -1,0 +1,6 @@
+Name,Surname,Student No
+Sibusiso,Mkhize,09000021
+Lerato,Modise,09000022
+Njabulo,Zulu,09000023
+Duplicate,Student,09000021
+Malformed,,99A0001
