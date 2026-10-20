@@ -36,7 +36,7 @@ export const ResidencesView: React.FC<ResidencesProps> = ({
   // Add Residence Modal
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
   const [addName, setAddName] = useState<string>('');
-  const [addCampus, setAddCampus] = useState<string>('Steve Biko Campus');
+  const [addCampus, setAddCampus] = useState<string>('Durban Campus');
   const [addCapacity, setAddCapacity] = useState<string>('150');
   const [addError, setAddError] = useState<string | null>(null);
 
@@ -54,7 +54,10 @@ export const ResidencesView: React.FC<ResidencesProps> = ({
   const handleStartEdit = (res: Residence) => {
     setEditingId(res.id);
     setEditName(res.name);
-    setEditCampus(res.campus);
+    const normalizedCampus = res.campus.toLowerCase().includes('pmb') || res.campus.toLowerCase().includes('midland') || res.campus.toLowerCase().includes('indumiso')
+      ? 'PMB (Midlands) Campus'
+      : 'Durban Campus';
+    setEditCampus(normalizedCampus);
     setEditCapacity(res.officialCapacity.toString());
     setCapacityError(null);
   };
@@ -283,19 +286,26 @@ export const ResidencesView: React.FC<ResidencesProps> = ({
                           outline: 'none',
                         }}
                       />
-                      <input
-                        type="text"
-                        value={editCampus}
-                        onChange={(e) => setEditCampus(e.target.value)}
-                        placeholder="Campus (e.g. ML Sultan Campus)"
-                        style={{
-                          padding: '4px 8px',
-                          borderRadius: '4px',
-                          border: '1px solid #E5E5E2',
-                          fontSize: '12px',
-                          outline: 'none',
-                        }}
-                      />
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <label style={{ fontSize: '11px', color: '#777777' }}>
+                          Campus Location:
+                        </label>
+                        <select
+                          value={editCampus}
+                          onChange={(e) => setEditCampus(e.target.value)}
+                          style={{
+                            padding: '5px 8px',
+                            borderRadius: '4px',
+                            border: '1px solid #E5E5E2',
+                            fontSize: '12px',
+                            background: '#FFFFFF',
+                            outline: 'none',
+                          }}
+                        >
+                          <option value="Durban Campus">Durban Campus</option>
+                          <option value="PMB (Midlands) Campus">PMB (Midlands) Campus</option>
+                        </select>
+                      </div>
                       <div>
                         <label style={{ fontSize: '11px', color: '#777777', display: 'block', marginBottom: '2px' }}>
                           Official Capacity (Positive whole number):
@@ -490,9 +500,7 @@ export const ResidencesView: React.FC<ResidencesProps> = ({
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: '#242424', marginBottom: '4px' }}>
                   Campus:
                 </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Steve Biko Campus"
+                <select
                   value={addCampus}
                   onChange={(e) => setAddCampus(e.target.value)}
                   style={{
@@ -501,9 +509,13 @@ export const ResidencesView: React.FC<ResidencesProps> = ({
                     borderRadius: '6px',
                     border: '1px solid #E5E5E2',
                     fontSize: '13px',
+                    background: '#FFFFFF',
                     outline: 'none',
                   }}
-                />
+                >
+                  <option value="Durban Campus">Durban Campus</option>
+                  <option value="PMB (Midlands) Campus">PMB (Midlands) Campus</option>
+                </select>
               </div>
 
               <div>
