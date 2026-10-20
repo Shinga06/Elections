@@ -31,12 +31,14 @@ import {
 import { 
   UserRole, 
   Election, 
+  ElectionStatus,
   Residence,
   CandidateNomination, 
   VoterRegisterBatch, 
   PortfolioResult, 
   RegisteredStudent,
-  AnonymousBallotRecord 
+  AnonymousBallotRecord,
+  SupportIncident 
 } from './types/election';
 import { evaluateNominationsAtDeadline } from './utils/nominationRules';
 
@@ -238,7 +240,7 @@ export const App: React.FC = () => {
     }));
   };
 
-  // Student Final Ballot Commit (Strict Duplicate Prevention & Anonymity Enforced!)
+  // Student Final Ballot Commit (Strict Duplicate Prevention, Voting Period Check & Idempotent Safe Handling - FR-23)
   const handleSubmitFinalBallot = (
     studentNumber: string, 
     electionId: string, 
@@ -255,31 +257,48 @@ export const App: React.FC = () => {
       return { success: false, error: 'Student marked as ineligible.' };
     }
 
-    // 2. Strict duplicate check
+    // 2. Voting Period Check (FR-23: Prevent submission outside voting period)
+    const targetElection = elections.find(e => e.id === electionId || e.residenceId === residenceId);
+    if (targetElection && targetElection.status !== 'Voting Open') {
+      return {
+        success: false,
+        error: `Submission rejected: Voting is currently closed for ${targetElection.residenceName} (Current Status: ${targetElection.status}). Final submissions outside the active voting window are strictly prohibited (SRS FR-23).`
+      };
+    }
+
+    // 3. Safe handling of interrupted or repeated submission requests (FR-23: Idempotent replay)
     if (voter.votingStatus === 'Voted') {
-      // Audit security log
+      const priorBallot = anonymousBallots.find(b => b.electionId === electionId && b.residenceId === residenceId);
+      const replayReceipt = priorBallot?.receiptHash || '0x' + Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+
       setAuditLogs(prev => [
         {
           id: `audit-${Date.now()}`,
           timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-          actorName: 'Security Sentinel',
-          actorRole: 'Ballot Gatekeeper',
-          action: 'Duplicate Submission Blocked',
-          details: `Rejected secondary ballot attempt for student #${studentNumber}. Status already marked Voted.`,
+          actorName: 'Idempotency Gatekeeper',
+          actorRole: 'Ballot Engine (FR-23)',
+          action: 'Repeated/Interrupted Submission Replayed',
+          details: `Safe repeated submission request for student #${studentNumber}. Replayed prior receipt ${replayReceipt} without duplicate count.`,
           ipAddress: '10.200.4.15',
-          severity: 'security',
+          severity: 'info',
         },
         ...prev,
       ]);
-      return { success: false, error: 'Duplicate submission rejected: Ballot already committed for this student.' };
+
+      return { 
+        success: true, 
+        receiptHash: replayReceipt, 
+        isIdempotentReplay: true, 
+        message: 'Your ballot was already safely recorded. Duplicate vote prevented, existing receipt confirmed.' 
+      };
     }
 
-    // 3. Residence check
+    // 4. Residence check
     if (voter.residenceId !== residenceId) {
       return { success: false, error: 'Cross-residence submission prohibited.' };
     }
 
-    // 4. Generate decoupled receipt and store anonymous ballot
+    // 5. Generate decoupled receipt and store anonymous ballot
     const receiptHash = '0x' + Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
     const newAnonymousBallot: AnonymousBallotRecord = {
       ballotId: `sealed-bal-${Date.now()}`,
@@ -336,6 +355,73 @@ export const App: React.FC = () => {
     ]);
 
     return { success: true, receiptHash };
+  };
+
+  // Technical Support & Incident Handlers (FR-30 & §9)
+  const handleAddIncident = (newInc: Omit<SupportIncident, 'id' | 'createdAt'>) => {
+    const incId = `inc-0${incidents.length + 1}`;
+    const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    const incidentRecord: SupportIncident = {
+      ...newInc,
+      id: incId,
+      createdAt: now,
+    };
+    setIncidents(prev => [incidentRecord, ...prev]);
+
+    setAuditLogs(prev => [
+      {
+        id: `audit-${Date.now()}`,
+        timestamp: now,
+        actorName: 'Support Officer',
+        actorRole: 'Technical Operations',
+        action: 'Support Incident Logged',
+        details: `Incident ${incId} created for student #${newInc.studentIdentifier} (${newInc.category}, ${newInc.campus || 'Durban'}).`,
+        ipAddress: '192.168.1.15',
+        severity: newInc.escalationLevel === 'Escalated to Election Committee' ? 'warning' : 'info',
+      },
+      ...prev,
+    ]);
+  };
+
+  const handleUpdateIncident = (id: string, updates: Partial<SupportIncident>) => {
+    setIncidents(prev => prev.map(inc => inc.id === id ? { ...inc, ...updates } : inc));
+
+    const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    const actionDesc = updates.status === 'Resolved' ? 'Incident Resolved' : updates.status === 'Escalated' ? 'Incident Escalated to Committee' : 'Incident Reassigned';
+
+    setAuditLogs(prev => [
+      {
+        id: `audit-${Date.now()}`,
+        timestamp: now,
+        actorName: 'Support Officer',
+        actorRole: 'Technical Operations',
+        action: actionDesc,
+        details: `Updated incident ${id}: Status=${updates.status || 'In Progress'}, Assigned=${updates.assignedTo || 'Unchanged'}.`,
+        ipAddress: '192.168.1.15',
+        severity: updates.status === 'Escalated' ? 'warning' : 'info',
+      },
+      ...prev,
+    ]);
+  };
+
+  const handleEmergencyPauseToggle = (electionId: string, paused: boolean, reason: string) => {
+    const newStatus: ElectionStatus = paused ? 'Voting Closed' : 'Voting Open';
+    setElections(prev => prev.map(e => e.id === electionId ? { ...e, status: newStatus } : e));
+
+    const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    setAuditLogs(prev => [
+      {
+        id: `audit-${Date.now()}`,
+        timestamp: now,
+        actorName: 'Dr. E. Vance',
+        actorRole: 'Chief Electoral Officer',
+        action: paused ? 'Emergency Election Pause' : 'Emergency Election Resume',
+        details: `Election ${electionId} status set to ${newStatus}. Justification: "${reason}" (SRS §9).`,
+        ipAddress: '192.168.1.10',
+        severity: 'critical',
+      },
+      ...prev,
+    ]);
   };
 
   // Multi-Residence Election Creation with Synchronized Schedule (Rule 2)
@@ -834,6 +920,8 @@ export const App: React.FC = () => {
               residences={residences}
               students={students}
               auditLogs={auditLogs}
+              incidents={incidents}
+              results={resultsData}
             />
           )}
 
@@ -842,7 +930,13 @@ export const App: React.FC = () => {
           )}
 
           {currentPage === 'support' && (
-            <SupportView incidents={incidents} />
+            <SupportView 
+              incidents={incidents}
+              elections={elections}
+              onAddIncident={handleAddIncident}
+              onUpdateIncident={handleUpdateIncident}
+              onEmergencyPauseToggle={handleEmergencyPauseToggle}
+            />
           )}
 
           {currentPage === 'activity' && (

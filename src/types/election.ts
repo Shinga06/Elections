@@ -218,11 +218,18 @@ export interface SupportIncident {
   category: 'Login/OTP' | 'Nomination' | 'Seconding' | 'Voting' | 'Eligibility' | 'Other';
   description: string;
   studentIdentifier: string;
+  contactMethod?: 'University Email' | 'Phone' | 'Walk-in (Durban Campus)' | 'Walk-in (Midlands Campus)';
+  campus?: 'Durban' | 'Midlands';
   residenceName: string;
   createdAt: string;
   status: 'Open' | 'In Progress' | 'Escalated' | 'Resolved';
   assignedTo?: string;
+  escalationLevel?: 'Standard' | 'Urgent' | 'Escalated to Election Committee';
+  escalationReason?: string;
+  escalatedAt?: string;
+  resolvedAt?: string;
   resolutionNotes?: string;
+  resolutionTimeMinutes?: number;
 }
 
 export interface AuditLogEntry {
@@ -234,4 +241,6 @@ export interface AuditLogEntry {
   details: string;
   ipAddress: string;
   severity: 'info' | 'warning' | 'security' | 'critical';
+  hash?: string;
+  prevHash?: string;
 }
