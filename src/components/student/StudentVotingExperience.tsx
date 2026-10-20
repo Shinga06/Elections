@@ -62,6 +62,14 @@ export const StudentVotingExperience: React.FC<StudentVotingFlowProps> = ({
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState<number>(0);
 
+  // OTP security state (FR-09: expiry, attempt limits, rate limiting)
+  const [otpAttempts, setOtpAttempts] = useState<number>(0);
+  const [otpIssuedAt, setOtpIssuedAt] = useState<number | null>(null);
+  const [otpLockedUntil, setOtpLockedUntil] = useState<number | null>(null);
+  const OTP_MAX_ATTEMPTS = 5;
+  const OTP_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
+  const OTP_LOCKOUT_MS = 30 * 1000;      // 30-second lockout after max attempts
+
   // Voting period countdown
   const [timeRemaining, setTimeRemaining] = useState<string>('');
 
@@ -135,20 +143,47 @@ export const StudentVotingExperience: React.FC<StudentVotingFlowProps> = ({
     setSimulatedExpectedOtp(randomOtp);
     setVerifiedStudent(match);
     setActiveResidenceElection(studentElection);
+    setOtpAttempts(0);
+    setOtpIssuedAt(Date.now());
+    setOtpLockedUntil(null);
     setStep('otp');
   };
 
-  // Step 2: Verify OTP
+  // Step 2: Verify OTP — with rate limiting, attempt tracking, and expiry (FR-09)
   const handleOtpVerify = (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
 
-    if (otpCode.trim() !== simulatedExpectedOtp && otpCode.trim() !== '849201') {
-      setAuthError('Invalid OTP passcode. Please check the code dispatched to your university email.');
+    const now = Date.now();
+
+    // Check lockout
+    if (otpLockedUntil && now < otpLockedUntil) {
+      const secsLeft = Math.ceil((otpLockedUntil - now) / 1000);
+      setAuthError(`Too many failed attempts. Please wait ${secsLeft} seconds before trying again.`);
       return;
     }
 
-    // Check for previously saved draft session and restore it (3.3: incomplete ballot can be saved and resumed)
+    // Check OTP expiry (10 minutes)
+    if (otpIssuedAt && now - otpIssuedAt > OTP_EXPIRY_MS) {
+      setAuthError('Your OTP has expired (10-minute limit). Please go back and request a new one.');
+      return;
+    }
+
+    const newAttempts = otpAttempts + 1;
+
+    if (otpCode.trim() !== simulatedExpectedOtp && otpCode.trim() !== '849201') {
+      setOtpAttempts(newAttempts);
+      const remaining = OTP_MAX_ATTEMPTS - newAttempts;
+      if (remaining <= 0) {
+        setOtpLockedUntil(now + OTP_LOCKOUT_MS);
+        setAuthError(`Maximum OTP attempts reached. Your session is locked for 30 seconds.`);
+      } else {
+        setAuthError(`Invalid OTP passcode. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining before lockout.`);
+      }
+      return;
+    }
+
+    // Check for previously saved draft session and restore it (FR-19)
     if (verifiedStudent && activeResidenceElection) {
       const existingDraft = draftBallots.find(
         d => d.studentNumber === verifiedStudent.studentNumber && d.electionId === activeResidenceElection.id
@@ -380,7 +415,7 @@ export const StudentVotingExperience: React.FC<StudentVotingFlowProps> = ({
         {step === 'login' && (
           <div
             className="notion-card"
-            style={{ width: '440px', padding: '32px', display: 'flex', flexDirection: 'column', gap: '20px' }}
+            style={{ maxWidth: '440px', width: '100%', padding: '32px', display: 'flex', flexDirection: 'column', gap: '20px' }}
           >
             <div>
               <h2 style={{ fontSize: '20px', fontWeight: 600, color: '#242424' }}>Student Authentication</h2>
@@ -441,7 +476,7 @@ export const StudentVotingExperience: React.FC<StudentVotingFlowProps> = ({
         {step === 'otp' && verifiedStudent && (
           <div
             className="notion-card"
-            style={{ width: '440px', padding: '32px', display: 'flex', flexDirection: 'column', gap: '20px' }}
+            style={{ maxWidth: '440px', width: '100%', padding: '32px', display: 'flex', flexDirection: 'column', gap: '20px' }}
           >
             <div>
               <span style={{ fontSize: '11px', textTransform: 'uppercase', color: '#1B5E20', fontWeight: 600 }}>

@@ -249,3 +249,51 @@ button, input, select, textarea {
 .notion-table tr:hover td {
   background-color: #FAFAF9;
 }
+
+/* Mobile & Tablet Responsiveness (SRS §6.1) */
+@media (max-width: 768px) {
+  body {
+    font-size: 13px;
+  }
+
+  .notion-card {
+    padding: 16px !important;
+  }
+
+  /* Responsive header */
+  header {
+    padding: 0 12px !important;
+    height: auto !important;
+    min-height: 56px;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+  }
+
+  /* Form and button adjustments on smaller screens */
+  .btn {
+    white-space: normal;
+    text-align: center;
+  }
+
+  /* Responsive tables */
+  .notion-table th, 
+  .notion-table td {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  /* Allow grid and flex containers to stack */
+  .responsive-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .notion-card {
+    padding: 12px !important;
+    border-radius: var(--radius-md) !important;
+  }
+}
+

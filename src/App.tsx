@@ -568,6 +568,68 @@ export const App: React.FC = () => {
     setNominations(prev => prev.map(n => n.id === id ? { ...n, status: 'Disqualified', reviewReason: reason } : n));
   };
 
+  const handleVerifyResults = (electionId: string, verifierName: string) => {
+    const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    setElections(prev => prev.map(e => e.id === electionId ? {
+      ...e,
+      status: 'Awaiting Certification',
+      verifiedAt: now,
+      verifiedBy: verifierName,
+      resultsVisibility: 'verified',
+    } : e));
+    setAuditLogs(prev => [{
+      id: `audit-${Date.now()}`,
+      timestamp: now,
+      actorName: verifierName,
+      actorRole: 'Electoral Officer',
+      action: 'Results Verified',
+      details: `Election ${electionId} results verified by ${verifierName}. Results remain hidden from students pending certification.`,
+      ipAddress: '192.168.1.10',
+      severity: 'info',
+    }, ...prev]);
+  };
+
+  const handleCertifyResults = (electionId: string, certifierName: string) => {
+    const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    setElections(prev => prev.map(e => e.id === electionId ? {
+      ...e,
+      status: 'Awaiting Certification',
+      certifiedAt: now,
+      certifiedBy: certifierName,
+      resultsVisibility: 'certified',
+    } : e));
+    setAuditLogs(prev => [{
+      id: `audit-${Date.now()}`,
+      timestamp: now,
+      actorName: certifierName,
+      actorRole: 'Chief Electoral Officer',
+      action: 'Results Certified',
+      details: `Election ${electionId} results officially certified by ${certifierName}. Results remain hidden until publication.`,
+      ipAddress: '192.168.1.10',
+      severity: 'info',
+    }, ...prev]);
+  };
+
+  const handlePublishResults = (electionId: string) => {
+    const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    setElections(prev => prev.map(e => e.id === electionId ? {
+      ...e,
+      status: 'Published',
+      publishedAt: now,
+      resultsVisibility: 'published',
+    } : e));
+    setAuditLogs(prev => [{
+      id: `audit-${Date.now()}`,
+      timestamp: now,
+      actorName: 'Dr. E. Vance',
+      actorRole: 'Chief Electoral Officer',
+      action: 'Results Officially Published',
+      details: `Election ${electionId} results published to students. Official announcement active on student portal.`,
+      ipAddress: '192.168.1.10',
+      severity: 'info',
+    }, ...prev]);
+  };
+
   const handleToggleVoting = (electionId: string, open: boolean) => {
     setElections(prev => prev.map(e => e.id === electionId ? { ...e, status: open ? 'Voting Open' : 'Awaiting Certification' } : e));
   };
@@ -592,13 +654,29 @@ export const App: React.FC = () => {
 
   // If Student role is active, render student voting flow without admin chrome
   if (currentRole === 'student') {
+    // Derive draft ballots from student statuses (FR-19/FR-20)
+    const draftBallots = students
+      .filter(s => s.votingStatus === 'Draft Saved')
+      .map(s => ({
+        id: `draft-${s.studentNumber}`,
+        studentNumber: s.studentNumber,
+        electionId: elections.find(e => e.residenceId === s.residenceId)?.id || '',
+        residenceId: s.residenceId,
+        selections: {},
+        savedAt: new Date().toISOString(),
+        isComplete: false,
+      }));
+
     return (
       <StudentVotingExperience
         students={students}
         elections={elections}
         candidates={nominations}
         residences={residences}
-        onSaveDraftSession={handleSaveDraftSession}
+        draftBallots={draftBallots}
+        onSaveDraftSession={(studentNumber, electionId, residenceId, selections) =>
+          handleSaveDraftSession(studentNumber, selections)
+        }
         onSubmitFinalBallot={handleSubmitFinalBallot}
         onExitToAdmin={() => setCurrentRole('admin')}
       />
@@ -735,21 +813,27 @@ export const App: React.FC = () => {
             />
           )}
 
-          {currentPage === 'results' && (
-            <ResultsCertificationView
-              election={elections[0]}
-              results={resultsData}
-              onCertify={() => {}}
-              onPublish={() => {}}
-              onResolveTie={handleResolveTie}
-            />
-          )}
+          {currentPage === 'results' && (() => {
+            const selectedElec = elections.find(e => e.id === selectedElectionId) || elections[0];
+            return (
+              <ResultsCertificationView
+                election={selectedElec}
+                results={resultsData}
+                onVerify={(name) => handleVerifyResults(selectedElec.id, name)}
+                onCertify={(name) => handleCertifyResults(selectedElec.id, name)}
+                onPublish={() => handlePublishResults(selectedElec.id)}
+                onResolveTie={handleResolveTie}
+              />
+            );
+          })()}
 
           {currentPage === 'reports' && (
             <ReportsView
               elections={elections}
               nominations={nominations}
               residences={residences}
+              students={students}
+              auditLogs={auditLogs}
             />
           )}
 

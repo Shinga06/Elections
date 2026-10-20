@@ -369,9 +369,44 @@ export const NominationsView: React.FC<NominationsProps> = ({
                     title="Copy candidate's unique seconder collection URL"
                   >
                     {copiedId === nom.id ? <Check size={12} color="#1B5E20" /> : <Copy size={12} />}
-                    <span>{copiedId === nom.id ? 'Copied' : 'Seconder Link'}</span>
+                    <span>{copiedId === nom.id ? 'Copied!' : 'Copy Seconder Link'}</span>
                   </button>
+                </div>
 
+                {/* FR-10: Visible, navigable unique seconder link */}
+                <div style={{
+                  marginTop: '6px',
+                  padding: '6px 10px',
+                  background: '#F3EFFB',
+                  borderRadius: '5px',
+                  border: '1px solid #D8CCE8',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}>
+                  <span style={{ fontSize: '10px', color: '#7656C9', fontWeight: 600, whiteSpace: 'nowrap' }}>🔗 Seconder URL:</span>
+                  <a
+                    href={nom.uniqueSeconderLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      fontSize: '10px',
+                      color: '#5B3EAA',
+                      textDecoration: 'underline',
+                      wordBreak: 'break-all',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      maxWidth: '180px',
+                      display: 'inline-block',
+                    }}
+                    title={nom.uniqueSeconderLink}
+                  >
+                    {nom.uniqueSeconderLink}
+                  </a>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
                   {nom.status !== 'Withdrawn' && (
                     <button
                       onClick={() => {

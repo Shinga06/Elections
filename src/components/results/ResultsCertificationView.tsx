@@ -17,6 +17,7 @@ import { StatusBadge } from '../common/StatusBadge';
 interface ResultsCertificationProps {
   election: Election;
   results: PortfolioResult[];
+  onVerify: (verifierName: string) => void;
   onCertify: (certifierName: string) => void;
   onPublish: () => void;
   onResolveTie: (portfolio: string, winnerId: string, reason: string) => void;
@@ -25,6 +26,7 @@ interface ResultsCertificationProps {
 export const ResultsCertificationView: React.FC<ResultsCertificationProps> = ({
   election,
   results,
+  onVerify,
   onCertify,
   onPublish,
   onResolveTie,
@@ -32,8 +34,14 @@ export const ResultsCertificationView: React.FC<ResultsCertificationProps> = ({
   const [activeTab, setActiveTab] = useState<'tally' | 'checklist' | 'tie-resolution'>('tally');
   const [selectedTieWinner, setSelectedTieWinner] = useState<string>('marula-cand-1');
   const [tieResolutionReason, setTieResolutionReason] = useState<string>('');
-  const [isCertified, setIsCertified] = useState<boolean>(!!election.certifiedAt);
-  const [isPublished, setIsPublished] = useState<boolean>(election.status === 'Published');
+  const [certifierName, setCertifierName] = useState<string>('Dr. E. Vance (Chief Electoral Officer)');
+  const [showCertifyConfirm, setShowCertifyConfirm] = useState<boolean>(false);
+  const [showPublishConfirm, setShowPublishConfirm] = useState<boolean>(false);
+
+  const isVerified = !!election.verifiedAt;
+  const isCertified = !!election.certifiedAt;
+  const isPublished = election.status === 'Published' || election.resultsVisibility === 'published';
+  const resultsVisibility = election.resultsVisibility || 'hidden';
 
   const tiedPortfolio = results.find(r => r.hasTie);
 
@@ -46,6 +54,47 @@ export const ResultsCertificationView: React.FC<ResultsCertificationProps> = ({
       onResolveTie(tiedPortfolio.portfolio, selectedTieWinner, tieResolutionReason);
       alert('Committee decision recorded. Original tied vote counts preserved in official audit log.');
     }
+  };
+
+  const handleExportCertifiedReport = () => {
+    const rows = [
+      ['Residence', election.residenceName],
+      ['Election Status', election.status],
+      ['Results Visibility', isPublished ? 'Published' : isCertified ? 'Certified (Hidden)' : isVerified ? 'Verified (Hidden)' : 'Hidden'],
+      ['Total Ballots Cast', String(election.totalBallotsCast)],
+      ['Eligible Voters', String(election.eligibleVoterCount)],
+      ['Turnout %', `${election.turnoutPercentage}%`],
+      ['Verified By', election.verifiedBy || 'Pending'],
+      ['Verified At', election.verifiedAt || 'Pending'],
+      ['Certified By', election.certifiedBy || 'Pending'],
+      ['Certified At', election.certifiedAt || 'Pending'],
+      ['Published At', election.publishedAt || 'Pending'],
+      [],
+      ['Portfolio', 'Candidate ID', 'Candidate Name', 'Vote Count', 'Is Winner', 'Tie Status'],
+      ...results.flatMap(r =>
+        r.candidates.map(c => [
+          r.portfolio,
+          c.candidateId,
+          c.candidateName,
+          String(c.votes),
+          c.isWinner ? 'Winner' : 'Runner-up',
+          r.hasTie ? 'Tied' : 'Clear',
+        ])
+      ),
+    ];
+
+    const csvContent = rows
+      .map(row => row.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `certified_results_${election.residenceName.toLowerCase().replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -63,49 +112,121 @@ export const ResultsCertificationView: React.FC<ResultsCertificationProps> = ({
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Results visibility badge */}
+          <span style={{
+            fontSize: '11px',
+            padding: '4px 10px',
+            borderRadius: '5px',
+            fontWeight: 600,
+            background: isPublished ? '#EDF7EE' : isCertified ? '#F3EFFB' : isVerified ? '#FFFBEB' : '#F8F8F6',
+            color: isPublished ? '#1B5E20' : isCertified ? '#7656C9' : isVerified ? '#92400E' : '#6B6B66',
+          }}>
+            {isPublished ? '📢 Published' : isCertified ? '✓ Certified — Awaiting Publication' : isVerified ? '🔍 Verified — Awaiting Certification' : '🔒 Results Hidden'}
+          </span>
+
           <button
-            onClick={() => alert('Downloading official election certification report (PDF/CSV)...')}
+            onClick={handleExportCertifiedReport}
             className="btn btn-secondary"
             style={{ fontSize: '12px' }}
           >
             <Download size={14} /> Export Certified Report
           </button>
 
-          {!isCertified ? (
+          {/* Step 1: Verify */}
+          {!isVerified && !isCertified && !isPublished && (
             <button
               onClick={() => {
                 if (tiedPortfolio && !tiedPortfolio.tieResolutionDecision) {
-                  alert('Action Blocked: All tied portfolios must have a recorded Election Committee resolution before certification.');
+                  alert('Action Blocked: All tied portfolios must have a recorded Election Committee resolution before verification.');
                   return;
                 }
-                setIsCertified(true);
-                onCertify('Dr. E. Vance (Chief Electoral Officer)');
+                onVerify(certifierName);
               }}
+              className="btn btn-secondary"
+              style={{ fontSize: '12px', borderColor: '#B45309', color: '#B45309' }}
+            >
+              <ShieldCheck size={14} /> Mark as Verified
+            </button>
+          )}
+
+          {/* Step 2: Certify (only after verified) */}
+          {isVerified && !isCertified && !isPublished && (
+            <button
+              onClick={() => setShowCertifyConfirm(true)}
               className="btn btn-primary"
               style={{ fontSize: '12px' }}
             >
               <Award size={14} /> Certify Election Results
             </button>
-          ) : !isPublished ? (
+          )}
+
+          {/* Step 3: Publish (only after certified — closing voting does NOT auto-publish per §3.5) */}
+          {isCertified && !isPublished && (
             <button
-              onClick={() => {
-                setIsPublished(true);
-                onPublish();
-                alert('Results officially published to university student portal!');
-              }}
+              onClick={() => setShowPublishConfirm(true)}
               className="btn btn-primary"
               style={{ fontSize: '12px', background: '#10B981', borderColor: '#059669' }}
             >
               <Globe size={14} /> Officially Publish to Students
             </button>
-          ) : (
+          )}
+
+          {isPublished && (
             <span style={{ fontSize: '12px', color: '#1B5E20', background: '#EDF7EE', padding: '6px 12px', borderRadius: '6px', fontWeight: 600 }}>
-              ✓ Published & Announced
+              ✓ Published &amp; Announced
             </span>
           )}
         </div>
       </div>
+
+      {/* Certify confirmation modal */}
+      {showCertifyConfirm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}
+          onClick={() => setShowCertifyConfirm(false)}>
+          <div style={{ background: '#FFF', borderRadius: '10px', padding: '24px', width: '460px', maxWidth: '90%' }}
+            onClick={e => e.stopPropagation()}>
+            <h3 style={{ fontSize: '17px', fontWeight: 600, marginBottom: '12px' }}>Certify Election Results</h3>
+            <p style={{ fontSize: '13px', color: '#555550', marginBottom: '14px', lineHeight: 1.5 }}>
+              This action certifies the tally as accurate. Results will remain hidden from students until explicitly published.
+            </p>
+            <label style={{ fontSize: '12px', fontWeight: 500, display: 'block', marginBottom: '6px' }}>Certifying Officer Name:</label>
+            <input
+              value={certifierName}
+              onChange={e => setCertifierName(e.target.value)}
+              style={{ width: '100%', padding: '8px 10px', border: '1px solid #E5E5E2', borderRadius: '6px', fontSize: '13px', marginBottom: '16px', outline: 'none' }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button className="btn btn-secondary" onClick={() => setShowCertifyConfirm(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={() => {
+                onCertify(certifierName);
+                setShowCertifyConfirm(false);
+              }}><Award size={14} /> Confirm Certification</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Publish confirmation modal — explicit action required per §3.5 */}
+      {showPublishConfirm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}
+          onClick={() => setShowPublishConfirm(false)}>
+          <div style={{ background: '#FFF', borderRadius: '10px', padding: '24px', width: '460px', maxWidth: '90%' }}
+            onClick={e => e.stopPropagation()}>
+            <h3 style={{ fontSize: '17px', fontWeight: 600, marginBottom: '12px', color: '#10B981' }}>Publish Results to Students</h3>
+            <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '6px', padding: '12px', fontSize: '12px', color: '#92400E', marginBottom: '14px' }}>
+              ⚠ This will make results visible to all students. This action cannot be undone. Ensure the Election Committee has officially announced results before proceeding.
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button className="btn btn-secondary" onClick={() => setShowPublishConfirm(false)}>Cancel — Not Yet</button>
+              <button className="btn btn-primary" style={{ background: '#10B981', borderColor: '#059669' }} onClick={() => {
+                onPublish();
+                setShowPublishConfirm(false);
+              }}><Globe size={14} /> Confirm Official Publication</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tie Flag Alert Banner if Tie detected */}
       {tiedPortfolio && !tiedPortfolio.tieResolutionDecision && (
