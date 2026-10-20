@@ -95,6 +95,20 @@ export const StudentVotingExperience: React.FC<StudentVotingFlowProps> = ({
     return () => clearInterval(interval);
   }, [activeResidenceElection, step]);
 
+  // Return to student login screen after voting
+  const handleReturnToLogin = () => {
+    setStep('login');
+    setInputStudentNumber('');
+    setOtpCode('');
+    setVerifiedStudent(null);
+    setActiveResidenceElection(null);
+    setSelections({});
+    setReceiptHash('');
+    setAuthError(null);
+    setSubmissionError(null);
+    setRetryCount(0);
+  };
+
   // Step 1: Submit student number & verify against approved register
   const handleStudentNumberSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,7 +134,7 @@ export const StudentVotingExperience: React.FC<StudentVotingFlowProps> = ({
     }
 
     if (match.votingStatus === 'Voted') {
-      setAuthError(`Duplicate Ballot Blocked: Student "${cleanNumber}" has already cast their final confidential ballot on ${match.submittedAt || 'an earlier session'}. Each eligible student may submit only one ballot.`);
+      setAuthError(`You've already voted. Student #${cleanNumber} has already cast their final ballot for ${match.residenceName} (${match.submittedAt || 'earlier session'}). Duplicate voting is strictly prohibited.`);
       return;
     }
 
@@ -274,7 +288,7 @@ export const StudentVotingExperience: React.FC<StudentVotingFlowProps> = ({
     // 3.3: Network-safe — check submission status before retrying to prevent duplicate votes
     const statusCheck = checkSubmissionStatus(verifiedStudent.studentNumber, students);
     if (statusCheck.alreadySubmitted) {
-      setSubmissionError(`Your ballot was already successfully submitted at ${statusCheck.submittedAt}. No duplicate submission allowed.`);
+      setSubmissionError(`You've already voted. Your ballot was already successfully submitted at ${statusCheck.submittedAt}. Duplicate voting is strictly prohibited.`);
       setIsSubmitting(false);
       return;
     }
@@ -312,7 +326,7 @@ export const StudentVotingExperience: React.FC<StudentVotingFlowProps> = ({
 
     if (!result.success) {
       if (result.isDuplicate) {
-        setSubmissionError(`Your ballot was already submitted successfully. This is a duplicate attempt.`);
+        setSubmissionError(`You've already voted. Your ballot was already submitted successfully. Duplicate voting is strictly prohibited.`);
       } else {
         setSubmissionError(result.error || 'Server rejected the ballot. Please try again.');
         setRetryCount(prev => prev + 1);
@@ -848,11 +862,11 @@ export const StudentVotingExperience: React.FC<StudentVotingFlowProps> = ({
             </div>
 
             <button
-              onClick={onExitToAdmin}
+              onClick={handleReturnToLogin}
               className="btn btn-primary"
-              style={{ marginTop: '12px', width: '100%' }}
+              style={{ marginTop: '12px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
             >
-              Return to Commission Dashboard
+              <ArrowLeft size={16} /> Back to Login Screen
             </button>
           </div>
         )}
